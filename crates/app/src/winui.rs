@@ -1072,6 +1072,52 @@ pub fn sentence_pieces<'a>(template: &'a str, slots: &[&str]) -> Vec<Vec<Piece<'
         .collect()
 }
 
+/// Each input box's name for screen readers (#1407): the words around it in the translated
+/// sentence, in the sentence's own order — "Download no more than {mb} MBytes\nevery
+/// {hours} hours" names the MBytes box "Download no more than MBytes" and the hours box
+/// "every hours", so a reader says what a box's number is, whatever language the sentence is
+/// translated into. Words between two boxes belong to the one after them; a box with no
+/// words around it keeps its slot's own name.
+pub fn sentence_names(template: &str, slots: &[&str]) -> Vec<String> {
+    let rows = sentence_pieces(template, slots);
+    slots
+        .iter()
+        .map(|slot| {
+            let mut name = (*slot).to_owned();
+            for row in &rows {
+                // The words before the box, then the ones after it, up to another box.
+                let mut before: Vec<&str> = Vec::new();
+                let mut after: Vec<&str> = Vec::new();
+                let (mut seen, mut past) = (false, false);
+                for piece in row.iter().copied() {
+                    match piece {
+                        Piece::Text(s) if !past => {
+                            if seen {
+                                after.push(s);
+                            } else {
+                                before.push(s);
+                            }
+                        }
+                        Piece::Slot(s) if s == *slot => seen = true,
+                        Piece::Slot(_) if seen => past = true,
+                        Piece::Slot(_) => before.clear(),
+                        _ => {}
+                    }
+                }
+                if seen {
+                    before.extend(after);
+                    // A box with no words around it keeps its slot's own name.
+                    if !before.is_empty() {
+                        name = before.join(" ");
+                    }
+                    break;
+                }
+            }
+            name
+        })
+        .collect()
+}
+
 /// Where [`sentence`] puts things: (x, baseline, text) for each text piece, and each slot's
 /// rect in `slots` order. `width` measures a text. A right-aligned lead starts no further out
 /// than `near` (the window's edge); the box after it moves on instead.
@@ -8739,6 +8785,33 @@ example.org"; // values typed in, not texts to translate
         assert_eq!(texts[0], (222.0, 346.0, "h:".to_owned()));
         assert_eq!(rects[0].min, pos2(222.0 + w("h:") + 8.0, 330.0));
         assert_eq!(texts[1].0, rects[0].right() + 8.0);
+    }
+
+    #[test]
+    fn the_words_around_a_box_name_it() {
+        // The same sentence `english_lands_where_the_pieces_were` lays out.
+        assert_eq!(
+            sentence_names(
+                "Download no more than {mb} MBytes\nevery {hours} hours",
+                &["mb", "hours"]
+            ),
+            vec![
+                "Download no more than MBytes".to_owned(),
+                "every hours".to_owned()
+            ]
+        );
+    }
+
+    #[test]
+    fn a_translation_names_a_box_in_its_own_words() {
+        // Boxes first on each line, as `a_translation_moves_the_boxes` places them: the words
+        // between two boxes belong to the one after them.
+        assert_eq!(
+            sentence_names("{hours} h: {mb} MB", &["mb", "hours"]),
+            vec!["h: MB".to_owned(), "h:".to_owned()]
+        );
+        // A box with no words around it keeps its slot's own name.
+        assert_eq!(sentence_names("{mb}", &["mb"]), vec!["mb".to_owned()]);
     }
 
     #[test]

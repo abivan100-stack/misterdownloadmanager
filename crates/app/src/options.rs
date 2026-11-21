@@ -2197,6 +2197,8 @@ impl OptionsDialog {
                 ]
             })
             .collect();
+        // Named for screen readers by the page's title (#1407).
+        self.account_rows.name = crate::i18n::t("Debrid service accounts");
         let (_, del_key) = report(
             ui,
             o,
@@ -2357,6 +2359,8 @@ impl OptionsDialog {
             })
             .collect();
         // The list leaves the page's foot to Cookies for video sites (#229).
+        // Named for screen readers by the page's title (#1407).
+        self.login_rows.name = crate::i18n::t("User names and passwords for servers/sites");
         let (dbl, del_key) = report(
             ui,
             o,
@@ -3363,6 +3367,8 @@ impl OptionsDialog {
             .iter()
             .map(|d| vec![d.name.clone(), when(d.added), when(d.seen)])
             .collect();
+        // Named for screen readers by its caption above (#1407).
+        self.device_rows.name = crate::i18n::t("Paired devices:");
         let (_, del_key) = report(
             ui,
             o,

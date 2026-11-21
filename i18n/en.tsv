@@ -980,7 +980,7 @@
 #. text in the Options window
 #. a date's order: day first (30/10/2026)
 	Day, month, year	Day, month, year
-#. page title in the Options window
+#. page title in the Options window; text in the Options window
 	Debrid service accounts	Debrid service accounts
 #. text in the Scheduler window
 	December	December
@@ -4375,7 +4375,7 @@
 #. text in the Options window
 #. Options → Add an account: label before the field for the user name at the debrid service
 	User name:	User name:
-#. page title in the Options window
+#. page title in the Options window; text in the Options window
 	User names and passwords for servers/sites	User names and passwords for servers/sites
 #. text in the Options window
 	User-Agent for manually added downloads:	User-Agent for manually added downloads:
