@@ -1742,8 +1742,9 @@ These ship in the next version.
   can run through a range the system has taken from TCP (Hyper-V's, WSL's) — every probe
   failed, and the session fell back to its saved port, taken for UDP, listening on TCP alone
   without uTP, silently. The TCP probe was also blind to a port another session held — the
-  socket library the engine binds through sets address reuse on every TCP socket on Windows,
-  where reuse lets a bind take a port another program is listening on — so two sessions could
+  socket library the engine binds through sets address reuse on every TCP socket, and
+  reuse, where both sockets set it (Windows and Linux alike), lets a bind take a port
+  another of MDM's sessions is listening on — so two sessions could
   pick the same port, the second's uTP left off. Picked from the TCP side now, read back,
   probed with a plain bind, UDP probed on it; and a session that still loses uTP (the port
   taken in the moment before the binds) is started again on another port, at most three

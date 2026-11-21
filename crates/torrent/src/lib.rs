@@ -789,10 +789,11 @@ fn listener_ip(l: &ListenerOptions) -> std::net::IpAddr {
 /// excludedportrange`, and those move as they start and stop), where every TCP probe would
 /// fail and a whole run of [`PORT_TRIES`] picks through one would find nothing. The TCP
 /// probe is a plain bind, without the address reuse librqbit's own listeners take
-/// (`librqbit-dualstack-sockets` sets it on every TCP socket on Windows, where reuse lets a
-/// bind take a port another program is listening on): a port another session holds then
-/// probes as taken, not free — two sessions would otherwise pick the same one and the
-/// second's uTP would be left off for its whole run, its log the only word of it (#1589).
+/// (`librqbit-dualstack-sockets` sets it on every TCP socket, and where both sockets set
+/// it — Windows and Linux alike — a bind takes a port another of MDM's sessions, bound the
+/// same way, is listening on): a port a parallel session holds then probes as taken, not
+/// free — two sessions would otherwise pick the same one and the second's uTP would be
+/// left off for its whole run, its log the only word of it (#1589).
 fn free_for_both(l: &ListenerOptions, port: u16) -> Option<u16> {
     use librqbit_dualstack_sockets::{BindOpts, UdpSocket};
     // Without the adapter's device: a port free without it is free with it.
@@ -2751,6 +2752,33 @@ mod tests {
         );
         t.stop().await;
         drop(taken);
+    }
+
+    /// #1589: the TCP probe once bound with the address reuse the socket library sets, as
+    /// librqbit's own listeners do — and reuse, where both sockets set it, lets a bind take a
+    /// port another of MDM's sessions is listening on. A port a parallel session held probed
+    /// as free, and two sessions could take the same number, the second's uTP left off for
+    /// its whole run. The plain bind the probe is now refuses it.
+    #[tokio::test]
+    async fn a_port_another_program_listens_on_is_not_free() {
+        use librqbit_dualstack_sockets::{BindOpts, TcpListener};
+        let l = ListenerOptions {
+            mode: ListenerMode::TcpAndUtp,
+            listen_addr: (std::net::IpAddr::V4(Ipv4Addr::LOCALHOST), 0).into(),
+            ipv4_only: true,
+            ..Default::default()
+        };
+        // Held as a parallel session holds it: through the socket library, with the reuse.
+        let held = TcpListener::bind_tcp(
+            (std::net::IpAddr::V4(Ipv4Addr::LOCALHOST), 0).into(),
+            BindOpts {
+                reuseport: true,
+                ..BindOpts::default()
+            },
+        )
+        .unwrap();
+        let port = held.bind_addr().port();
+        assert_eq!(free_for_both(&l, port), None);
     }
 
     /// #650: the DHT starts from several public routers, not librqbit's two alone; a test's
